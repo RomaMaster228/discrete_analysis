@@ -1,0 +1,132 @@
+\section{Описание}
+Требуется написать реализацию алгоритма поразрядной сортировки.
+
+Как сказано в \cite{Kormen}: \enquote{Сам алгоритм состоит в последовательной сортировке объектов какой-либо 
+устойчивой сортировкой по каждому разряду, в порядке от младшего разряда к старшему, после чего последовательности 
+будут расположены в требуемом порядке}. В качестве устойчивой сортировки для разряда использую устойчивую версию 
+сортировки подсчётом. 
+
+
+\pagebreak
+
+\section{Исходный код}
+
+Для хранения пар \enquote{ключ-значение} будем использовать структуру $TPair$, так как это удобно. Ключ будем хранить
+в статическом массиве на 32 элемента, так как считываем его по одному символу. А для значения будем выделять динамическую память, так как там могут быть строки переменной длины до 64 символов.
+
+Поразрядная сортировка $RadixSort$ реализуется итерацией по каждому символу ключа элементов массива, начиная справа.
+Эти символы сортируются с помощью сортировки подсчётом $CountingSort$, чтобы программа работала за линейное время.
+ 
+Опишем функцию $CountingSort$. Устойчивая сортировка подсчётом осуществляется с помощью двух вспомогательных массивов: 
+один - для счётчика, другой - для записи отсортированного результата. Для удобства обозначим: $v$ - исходный массив, 
+$res$ - результирующий массив, $count$ - массив для подсчёта вхождений. 
+
+Сначала заполняем $count$ нулями. Затем для каждого $v[i]$ увеличиваем $count[v[i]]$ на единицу. Так, мы посчитаем 
+количество вхождений каждого элемента. Суммируем каждый $count[i]$ с $count[i - 1]$, кроме $count[0]$ (насчитываем 
+префиксные суммы). 
+Далее читаем входной массив с конца, записываем в $res[count[v[i]]]$ $v[i]$ и уменьшаем $count[v[i]]$ на единицу.
+
+
+
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+struct TPair {
+    char Key[32];
+    char* Value;
+};
+
+istream& operator>> (istream& input, TPair& pair) {
+    for (int i = 0; i < 32; ++i) {
+        input >> pair.Key[i];
+    }
+    input >> pair.Value;
+    return input;
+}
+
+ostream& operator<< (ostream& output, TPair& pair) {
+    for (int i = 0; i < 32; ++i) {
+        output << pair.Key[i];
+    }
+    output << '\t' << pair.Value;
+    return output;
+}
+
+void CountingSort(int i, vector<TPair>& v) {
+    vector<TPair> res(v.size());
+    int count[16] = { 0 };
+    for (long long j = 0; j < v.size(); ++j) {
+        if (v[j].Key[i] - '0' - 49 >= 0) {  // ASCII codes: 'a' = 97, '0' = 48
+            ++count[v[j].Key[i] - '0' - 39];
+        }
+        else {
+            ++count[v[j].Key[i] - '0'];
+        }
+    }
+    for (int j = 1; j < 16; ++j) {
+        count[j] += count[j - 1];
+    }
+    for (long long j = v.size() - 1; j >= 0; --j) {
+        if (v[j].Key[i] - '0' - 49 >= 0) {
+            --count[v[j].Key[i] - '0' - 39];
+            res[count[v[j].Key[i] - '0' - 39]] = v[j];
+        }
+        else {
+            --count[v[j].Key[i] - '0'];
+            res[count[v[j].Key[i] - '0']] = v[j];
+        }
+    }
+    v = move(res);
+}
+
+void RadixSort(vector<TPair>& v) {
+    for (int i = 31; i >= 0; --i) {
+        CountingSort(i, v);
+    }
+}
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    cout.tie(nullptr);
+    vector<TPair> v;
+    TPair pair;
+    pair.Value = (char*)malloc(sizeof(char) * 64);
+    while (cin >> pair) {
+        v.push_back(pair);
+        pair.Value = (char*)malloc(sizeof(char) * 64);
+    }
+    if (v.size() == 0) {
+        return 0;
+    }
+    RadixSort(v);
+    for (int i = 0; i < v.size(); ++i) {
+        cout << v[i] << '\n';
+    }
+    return 0;
+}
+
+	
+\end{lstlisting}
+
+\pagebreak
+
+\section{Консоль}
+\begin{alltt}
+roma@DESKTOP-JD58QU2:~/Diskran/lab1$ g++ lab1.cpp
+roma@DESKTOP-JD58QU2:~/Diskran/lab1$ cat test1 
+00000000000000000000000000000010	hello
+00000000000000000000000000000001	hi
+00000000000000000000000000010010	are
+00000000000000000000000000000100	what
+roma@DESKTOP-JD58QU2:~/Diskran/lab1$ ./a.out < test1 
+00000000000000000000000000000001	hi
+00000000000000000000000000000010	hello
+00000000000000000000000000000100	what
+00000000000000000000000000010010	are
+\end{alltt}
+\pagebreak
+
