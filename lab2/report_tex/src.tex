@@ -1,0 +1,240 @@
+\section{Описание}
+
+B-дерево - это сильноветвящееся и идеально сбалансированное дерево поиска. Согласно \cite{Kormen} оно обладает следующими
+свойствами:
+
+\begin{enumerate} 
+	\item Каждый узел дерева содержит следующие атрибуты:
+	\begin{enumerate} 
+		\item массив из $n$ ключей, упорядоченных по возрастанию
+		\item массив из $n + 1$ указателей на дочерние узлы
+	\end{enumerate} 
+	\item Ключи узла дерева разделяют поддиапазоны ключей, хранящихся в поддеревьях: в $i$-ом дочернем узле хранятся элементы, 
+	ключи которых больше $(i - 1)$-ого, но меньше $i$-ого ключа родительской вершины.
+	\item Все листья расположены на одинаковой глубине.
+	\item Каждый узел дерева должен содержать как минимум $t - 1$ ключ (исключение: корень должен содержать минимум 1 ключ). 
+	Количество ключей не должно превышать $2 * t - 1$, где $t >= 2$ - степень дерева.
+\end{enumerate}
+
+Алгоритм поиска по B-дереву напоминает поиск в бинарном дереве. Если искомая вершина отсутствует в текущей вершине, 
+то необходимо найти поддиапазон, которому она принадлежит, и продолжить поиск в соответствующем дочернем узле.
+Вставка новых элементов осуществляется только в листовые узлы В-дерева. Место для вставки определяется алгоритмом поиска. 
+Если в найденной вершине меньше $2 * t - 1$ элементов, то необходимо просто вставить новый ключ в массив так, чтобы
+сохранилась его упорядоченность. В противном случае необходимо выполнить разбиение вершины: средний ключ перемещается 
+в родительскую вершину, а первые и последние $t - 1$ ключей становятся его левым и правым ребенком соответственно.
+
+При удалении элемента из В-дерева могут возникнуть следующие ситуации:
+
+\begin{enumerate} 
+	\item Удаляемый элемент находится в листовом узле, размер которого больше $t - 1$. В этом случае необходимо просто 
+	удалить нужный ключ из листа.
+	\item Удаляемый элемент находится во внутреннем узле. Если размер левого поддерева для удаляемого элемента больше $t - 1$, 
+	то необходимо заменить этот элемент на максимальный элемент левого поддерева (расположен в листе) и удалить соответствующий 
+	элемент из листа. Если размер правого поддерева больше $t - 1$, то необходимо проделать аналогичную операцию с минимальным
+	элементом из правого поддерева. В противном случае необходимо выполнить слияние левого поддерева, удаляемого элемента 
+	и правого поддерева в одну вершину и продолжить удаление из новой вершины.
+	\item Если текущая вершина не содержит удаляемого элемента, то необходимо найти дочерний узел, в котором должна располагаться 
+	вершина. Если размер найденного узла равен $t - 1$, то необходимо переместить один ключ из его родителя в найденный узел, 
+	а крайний ключ из брата - в родителя. Если же размер обоих братьев этого узла тоже равен $t - 1$, то необходимо выполнить 
+	слияние с одним из двух братьев и продолжить удаление.
+\end{enumerate}
+
+Для сериализации дерева в файл записывались структуры следующего вида: лист/не лист + количество элементов в вершине + 
+[размер ключа + ключ + значение] для каждого элемента + аналогичные структуры для всех потомков, если текущая вершина не является листом.
+При десериализации данные из файла считывались согласно схеме выше и копировались в В-дерево.
+
+\pagebreak
+
+\section{Исходный код}
+
+Для хранения пар \enquote{ключ-значение} будем использовать структуру $TPair$, так как это удобно. Ключ будем хранить
+в статическом массиве на 257 элементов типа char. А значения будем хранить как uint\_64. 
+Перегрузим операторы сравнения для структуры $TPair$. Пара \enquote{ключ-значение} меньше, если её ключ лексикографически меньше.
+Создадим структуру $TNode$ для хранения узла дерева. Структура состоит из массива ключей $TPair$, массива дочерних узлов $TNode*$, целочисленной переменной $keys\_num$, показывающей количество ключей в вершине в текущий момент, и булевой переменной $is\_leaf$, 
+показывающей, является ли данная вершина листом. Переменная $DEGREE$ играет роль $t$ в B-дереве.
+
+\begin{lstlisting}[language=C++]
+const int DEGREE = 5;
+
+struct TPair {
+	char key[257];
+	uint64_t value;
+};
+
+class TNode {
+	public:
+	bool is_leaf = true;
+	int keys_num = 0;
+	TPair keys[2 * DEGREE];
+	TNode* children[2 * DEGREE + 1];
+	
+	TNode() {
+		for (int i = 0; i < 2 * DEGREE + 1; ++i) {
+			children[i] = nullptr;
+		}
+	}
+};
+\end{lstlisting}
+
+Для хранения самого дерева создадим класс $TBTree$, который включает в себя указатель на корень, публичные методы для поиска, 
+вставки, удаления элементов, сериализации и десериализации, а также приватный метод для рекурсивного удаления дерева. Эти методы
+будут использовать другие функции, чтобы код удобнее читался. Все функции реализованы в соответсвии с описанием. 
+
+\begin{lstlisting}[language=C++]
+	
+void SearchNode(TNode* node, char* str, TNode*& res, int& pos);  // if key not in tree, res will be nullptr
+void SplitChild(TNode* parent, int pos); // splitting parent at pos
+void InsertNode(TNode* node, TPair& KV);
+int SearchInNode(TNode* node, char* str); // searching str. pos is index of str or index of a child with str
+void RemoveNode(TNode* node, char* str);
+void RemoveFromNode(TNode* node, int pos); // remove key[pos] in current node by making shifts
+void MergeNodes(TNode* parent, int pos); // merging left child, parent[pos] and right child to left child
+void Rebalance(TNode* node, int& pos); // rebalancing tree if a node has critical size
+void NodeToFile(TNode* node, ostream& file);
+void FileToTree(TNode* node, istream& file);
+void DeleteTree(TNode* node);
+	
+
+class TBTree {
+	public:
+	TNode* root;
+	
+	TBTree() {
+		root = new TNode;
+	}
+	
+	~TBTree() {
+		Delete();
+	}
+	
+	void Search(char* str) const {
+		TNode* res;
+		int pos;
+		SearchNode(root, str, res, pos);
+		if (res == nullptr) {
+			cout << "NoSuchWord\n";
+		}
+		else {
+			cout << "OK: " << res->keys[pos].value << "\n";
+		}
+	}
+	
+	void Insert(TPair& KV) {
+		TNode* search_res;
+		int search_pos;
+		SearchNode(root, KV.key, search_res, search_pos);
+		if (search_res != nullptr) {
+			cout << "Exist\n";
+			return;
+		}
+		// if a root is full, we'll make a split
+		if (root->keys_num == 2 * DEGREE - 1) {
+			TNode* new_root = new TNode;
+			new_root->is_leaf = false;
+			new_root->children[0] = root;
+			root = new_root;
+			SplitChild(root, 0);
+		}
+		InsertNode(root, KV);
+		cout << "OK\n";
+	}
+	
+	void Remove(char* str) {
+		TNode* res;
+		int pos;
+		SearchNode(root, str, res, pos);
+		if (res == nullptr) {
+			cout << "NoSuchWord\n";
+		}
+		else {
+			RemoveNode(root, str);
+			cout << "OK\n";
+			// if our root is empty, its child becomes a new one
+			if (root->keys_num == 0 && !root->is_leaf) {
+				TNode* tmp = root->children[0];
+				delete root;
+				root = tmp;
+			}
+		}
+	}
+	
+	void Serialize(ostream& out) {
+		NodeToFile(root, out);
+		cout << "OK\n";
+	}
+	
+	void Deserialize(istream& in) {
+		FileToTree(root, in);
+		cout << "OK\n";
+	}
+	
+	private:
+	void Delete() {
+		DeleteTree(root);
+	}
+};
+}
+
+	
+\end{lstlisting}
+
+\pagebreak
+
+\section{Консоль}
+\begin{alltt}
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ make
+g++ -pedantic -Wall -std=c++11 -Werror -Wno-sign-compare -O3 -lm main.cpp -o
+solution
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./solution
++ a 1
+OK
++ b 2
+OK
++ c 3
+OK
++ d 4
+OK
+a
+OK: 1
+b
+OK: 2
+c
+OK: 3
+d
+OK: 4
+! Save test
+OK
+-a
+OK
+-b
+OK
+-c
+OK
+-d
+OK
+a
+NoSuchWord
+b
+NoSuchWord
+c
+NoSuchWord
+d
+NoSuchWord
++ e 5
+6
+OK
+! Load test
+OK
+a
+OK: 1
+b
+OK: 2
+c
+OK: 3
+d
+OK: 4
+e
+NoSuchWord
+\end{alltt}
+\pagebreak
+

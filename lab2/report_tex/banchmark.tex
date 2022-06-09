@@ -1,0 +1,35 @@
+\section{Тест производительности}
+{\itshape}
+
+Для анализа производительности будем использовать std::map стандартной библиотеки и сравним время работы с моей программой.
+Подготовим тесты следующего вида: в словарь добавляется n элементов, запрашивается поиск каждого элемента, удаляются все элементы 
+и снова запрашивается их поиск. Протестируем программы при n = 500, n = 10000, n = 100000.
+
+\begin{alltt}
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ make
+g++ -pedantic -Wall -std=c++11 -Werror -Wno-sign-compare -O3 -lm main.cpp -o
+btree
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ g++ -pedantic -Wall -std=c++11 -Werror
+-Wno-sign-compare -O3 -lm -o stdmap stdmap.cpp
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./btree <test500.txt >res1.txt
+Time: 0.0038201 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./stdmap <test500.txt >res2.txt
+Time: 0.0030815 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ diff res1.txt res2.txt
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./btree <test10k.txt >res1.txt
+Time: 0.0838783 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./stdmap <test10k.txt >res2.txt
+Time: 0.0484995 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ diff res1.txt res2.txt
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./btree <test100k.txt >res1.txt
+Time: 0.948157 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ ./stdmap <test100k.txt >res2.txt
+Time: 0.591212 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab2$ diff res1.txt res2.txt
+\end{alltt}
+
+Заметим, что std::map, реализованный на основе красно-чёрного дерева, работает примерно в 1,5-2 раза быстрее B-дерева. 
+Но стоит учитывать, что сложность красно-чёрного дерева - $O(log n)$, а B-дерева - $O(log_tn * logt)$
+
+\pagebreak
+
