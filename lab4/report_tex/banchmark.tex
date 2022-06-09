@@ -1,0 +1,27 @@
+\section{Тест производительности}
+{\itshape}
+
+Я решил сравнить свою реализацию алгоритма Ахо-Корасик с наивным алгоритмом поиска. Тестирование происходило на тестах с 
+миллионом слов. В первом тесте образец часто встречался в тексте, во втором - не встречался вообще.
+
+\begin{alltt}
+// Test 1
+roma@DESKTOP-JD58QU2:~/Diskran/lab4$ ./a.out <test.txt >result.txt
+Time: 0.164362 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab4$ ./naive <test.txt >result1.txt
+Time: 0.397422 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab4$ diff result.txt result1.txt
+
+// Test 2
+roma@DESKTOP-JD58QU2:~/Diskran/lab4$ ./a.out <test.txt >result.txt
+Time: 0.0644277 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab4$ ./naive <test.txt >result1.txt
+Time: 0.148165 seconds
+roma@DESKTOP-JD58QU2:~/Diskran/lab4$ diff result.txt result1.txt
+
+\end{alltt}
+
+По результатам тестирования видно, что алгоритм Ахо-Корасик значительно выиграл по времени у наивного алгоритма благодаря 
+использованию префиксного дерева и суффиксных ссылок.
+\pagebreak
+
