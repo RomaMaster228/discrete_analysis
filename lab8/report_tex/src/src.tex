@@ -1,0 +1,127 @@
+\section{Описание}
+
+Согласно \cite{greedy-habr}, жадный алгоритм - это алгоритм, который на каждом шаге делает локально наилучший выбор в надежде, что итоговое решение будет оптимальным.
+
+Данная задача как раз решается с помощью жадного алгоритма.
+
+Назовём \textit{зоной $i$, $i = 1, 2, 3$} подмножество массива, в котором должны находиться только числа $i$ для того, чтобы он был отсортированный. Для определения границ зон при считывании данных нам необходимо подсчитать, какое число сколько раз встречается. Например, если на вход поступает массив $3, 2, 1, 1$, то зона 1 - первые два элемента, зона 2 - третий элемент, зона 3 - последний элемент.
+
+Будем проходить по массиву слева направо. Как только мы обнаружим элемент, который находится не в своей зоне, мы будем сразу же заменять его на нужный элемент, взятый из другой зоны. Таким образом, у нас могут возникнуть следующие ситуации:
+
+\begin{itemize}
+    \item Мы находимся в зоне 1, но обнаружили число 2. Значит нужно найти во второй (а если во второй нет, то в третьей) зоне число 1 и поменять числа местами.
+    \item Мы находимся в зоне 1, но обнаружили число 3. Значит нужно найти в третьей (а если в третьей нет, то во второй) зоне число 1 и поменять числа местами.
+    \item Мы находимся в зоне 2, но обнаружили число 3. Значит нужно найти в третьей зоне число 2 и поменять числа местами.
+\end{itemize}
+
+Других вариантов быть не может. Мы гарантируем, что весь массив до текущей позиции был отсортирован.
+
+Если динамически обновлять позиции, с которыми мы будем обмениваться числами, то сложность алгоритма составляет $O(n)$ по времени и памяти
+
+\pagebreak
+
+\section{Исходный код}
+Для определения границ между зонами создадим массив \textit{counts}, в котором будет вестись подсчет количества каждого числа. \textit{counts[i]} - количество чисел \textit{i + 1} в исходных данных.
+
+Таким образом, можем определить границы зон:
+\begin{itemize}
+    \item $[0; counts[0])$ - зона 1
+    \item $[counts[0]; counts[0] + counts[1])$ - зона 2
+    \item $[counts[0] + counts[1]; N)$ - зона 3, $N$ - длина массива.
+\end{itemize}
+
+Для того, чтобы за константу находить числа для обмена, введем три переменные - \textit{$pos2\_1, pos3\_1, pos3\_2$}. $posi\_j$ - позиция числа \textit{j} в зоне \textit{i}. В первом и третьем случае мы всегда берем самое левое подходящее число. Во втором случае - самое правое. Это нужно для того, чтобы все 3 оказались в правой части массива (в зоне 3).
+
+Для обновления значений этих переменных мной была реализована функция \textit{getNextPos()}. Все вызовы этой функции будут суммарно работать за линейное время, так как для каждой из трех переменных мы в худщем случае выполним проход по всему массиву.
+
+В функции \textit{main()} реализован алгоритм, описанный выше.
+
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <vector>
+
+using namespace std;
+
+long long GetNextPos(short num, long long curPos, vector<short> &nums, bool reverseOrder = false) {
+    if (nums.empty() || curPos < 0 || curPos >= nums.size()) {
+        return 0;
+    }
+    if (!reverseOrder) {
+        while (nums[curPos] != num && curPos + 1 < nums.size()) {
+            ++curPos;
+        }
+    } 
+    else {
+        while (nums[curPos] != num && curPos - 1 >= 0) {
+            --curPos;
+        }
+    }
+    return curPos;
+}
+
+int main() {
+    ios_base::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    const int MAX_NUM = 3;
+
+    long long n;
+    cin >> n;
+    vector<short> nums(n);
+    vector<long long> counts(MAX_NUM);
+    for (long long i = 0; i < n; ++i) {
+        cin >> nums[i];
+        ++counts[nums[i] - 1];
+    }
+
+    long long swaps = 0;
+    long long pos2_1 = GetNextPos(1, counts[0], nums);
+    long long pos3_1 = GetNextPos(1, n - 1, nums, true);
+    long long pos3_2 = GetNextPos(2, counts[0] + counts[1], nums);
+
+    for (int i = 0; i < n; ++i) {
+        if (i < counts[0] && nums[i] != 1) {
+            // found number 2 or 3 which must be replaced by 1
+            if (nums[i] == 2) {
+                swap(nums[i], nums[pos2_1]);
+                ++swaps;
+                pos2_1 = GetNextPos(1, pos2_1, nums);
+            } else {
+                swap(nums[i], nums[pos3_1]);
+                ++swaps;
+                pos3_1 = GetNextPos(1, pos3_1, nums, true);
+            }
+        } 
+        else if (counts[0] <= i && i < counts[0] + counts[1] && nums[i] != 2) {
+            // found number 3 which must be replaced by 2
+            // numbers 1 can't be here, they are already placed correctly
+            swap(nums[i], nums[pos3_2]);
+            ++swaps;
+            pos3_2 = GetNextPos(2, pos3_2, nums);
+        }
+    }
+
+    cout << swaps << "\n";
+}
+\end{lstlisting}
+\pagebreak
+
+\section{Консоль}
+\begin{alltt}
+roma@DESKTOP-JD58QU2:~/Diskran/lab8$ g++ -pedantic -Wall -std=c++11 -Werror
+-Wno-sign-compare -O2 -lm main.cpp
+roma@DESKTOP-JD58QU2:~/Diskran/lab8$ ./a.out
+3
+3 2 1
+1
+roma@DESKTOP-JD58QU2:~/Diskran/lab8$ ./a.out
+4
+3 2 1 1
+2
+roma@DESKTOP-JD58QU2:~/Diskran/lab8$ ./a.out
+5
+2 3 1 2 1
+2
+\end{alltt}
+\pagebreak
+
